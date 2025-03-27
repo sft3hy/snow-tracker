@@ -43,7 +43,7 @@ python snowfall_checker.py
 ```
 
 ## 📧 Email Notifications  
-The script generates an **HTML email report** if snowfall is detected. To send emails, you can integrate an **SMTP service** (e.g., Gmail, SendGrid) by modifying `snowfall_checker.py` to send the output from `email_choice()`.
+The script generates an **HTML email report** if snowfall is detected. To send yourself an email, modify the 'snow_tracker.py' on line 104 to your email address instead of email_recipient="smaueltown@gmail.com". 
 
 ## 🤖 GitHub Actions Workflow  
 The GitHub Actions workflow (`.github/workflows/daily_snowfall.yml`) schedules the job:  
