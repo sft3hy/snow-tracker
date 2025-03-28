@@ -1,8 +1,5 @@
 import requests
-import os
 from email_utils import email_sam
-
-import requests
 
 # List of destinations with approximate coordinates (latitude, longitude)
 destinations = [

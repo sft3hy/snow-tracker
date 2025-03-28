@@ -24,4 +24,5 @@ jobs:
       - name: Run snowfall check
         env:
           API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         run: python snow_tracker.py
