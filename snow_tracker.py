@@ -2,7 +2,7 @@ import requests
 import os
 from email_utils import email_sam
 
-API_KEY = os.getenv("OPENWEATHER_API_KEY")
+import requests
 
 # List of destinations with approximate coordinates (latitude, longitude)
 destinations = [
@@ -15,20 +15,30 @@ destinations = [
 
 def fetch_weekly_forecast(lat, lon):
     """
-    Fetches the one week forecast using the OpenWeatherMap One Call API.
-    Returns the daily forecast list.
+    Fetches the one-week forecast using the National Weather Service (NWS) API.
+    Returns the daily forecast list with snowfall data if available.
     """
-    url = "https://api.openweathermap.org/data/3.0/onecall"
-    params = {
-        "lat": lat,
-        "lon": lon,
-        "units": "imperial",
-        "appid": API_KEY,
-    }
-    response = requests.get(url, params=params)
+    # Get the NWS gridpoint for the given latitude and longitude
+    url = f"https://api.weather.gov/points/{lat},{lon}"
+    response = requests.get(url)
     response.raise_for_status()
-    data = response.json()
-    return data.get("daily", [])
+    grid_data = response.json()
+    
+    # Extract grid ID and forecast URL
+    forecast_url = grid_data["properties"]["forecastGridData"]
+    
+    # Fetch detailed forecast data
+    response = requests.get(forecast_url)
+    response.raise_for_status()
+    forecast_data = response.json()
+
+    # Extract snowfall forecast (in millimeters)
+    snowfall_forecast = forecast_data["properties"]["snowfallAmount"]["values"]
+
+    # Convert millimeters to inches (1 mm = 0.0393701 inches)
+    daily_snowfall = [(entry["validTime"], entry["value"] * 0.0393701) for entry in snowfall_forecast]
+
+    return daily_snowfall
 
 def get_weekly_snowfall():
     """
@@ -38,24 +48,19 @@ def get_weekly_snowfall():
     results = []
     
     for dest in destinations:
-        daily_forecasts = fetch_weekly_forecast(dest["lat"], dest["lon"])
-        total_snow_inches = 0.0
-        
-        # Iterate over up to 7 days of forecast
-        for day in daily_forecasts[:7]:
-            # The API may include a "snow" field in the daily data if snowfall is forecast
-            # The unit should be inches when units=imperial, but if not, you may need to convert.
-            snow = day.get("snow", 0)
-            total_snow_inches += snow
-        
-        # If there is any snowfall, add the destination to the result
-        if total_snow_inches > 0:
-            # Round snowfall to one decimal place
-            results.append({
-                "location": dest["name"],
-                "snowfall_in_inches": round(total_snow_inches, 1)
-            })
-    
+        try:
+            daily_forecasts = fetch_weekly_forecast(dest["lat"], dest["lon"])
+            total_snow_inches = sum(snow for _, snow in daily_forecasts if snow > 0)
+
+            # If there is any snowfall, add the destination to the result
+            if total_snow_inches > 0:
+                results.append({
+                    "location": dest["name"],
+                    "snowfall_in_inches": round(total_snow_inches, 1)
+                })
+        except Exception as e:
+            print(f"Error fetching forecast for {dest['name']}: {e}")
+
     return results
 
 def email_choice():
@@ -97,8 +102,8 @@ def email_choice():
     else:
         return None
 
-fetch_weekly_forecast(37.647190, -118.967453)
-
-# potential_email = email_choice()
-# if potential_email is not None:
-#     email_sam(subject="Snow Forecast", body=potential_email, email_recipient="smaueltown@gmail.com")
+potential_email = email_choice()
+if potential_email is not None:
+    email_sam(subject="Snow Forecast", body=potential_email, email_recipient="smaueltown@gmail.com")
+else:
+    print("no snowfall in any locations in the next 7 days")
